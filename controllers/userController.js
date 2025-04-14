@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import sendEmail from '../utils/emailService.js';
+
 const prisma = new PrismaClient();
 
 export const createUser = async (req, res) => {
@@ -55,6 +57,9 @@ export const signup = async (req, res) => {
 export const signin = async (req, res) => {
   const { email, password } = req.body;
   const user = await prisma.user.findUnique({ where: { email: email }, include: { roles: true } });
+  if (!user) {
+    return res.status(401).json({ message: 'Invalid credentials' });
+  }
   const isPasswordValid = await bcrypt.compare(password, user.password);
 
   if (!isPasswordValid) {
@@ -67,4 +72,58 @@ export const signin = async (req, res) => {
   delete user.password;
 
   res.json({ message: 'User signed in successfully', token, user });
+};
+
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { otpCode, otpExpiry },
+  });
+  //////
+
+  try {
+    const isEmailSent = await sendEmail(
+      email,
+      'Password Reset OTP Code',
+      `
+      <h1>Password Reset OTP Code</h1>
+      <p>You requested a password reset. Use the following OTP code to reset your password:</p>
+      <h2 style="color: #4CAF50; font-size: 32px; letter-spacing: 5px; text-align: center;">${otpCode}</h2>
+      <p>This code will expire in 10 minutes.</p>
+      <p>If you didn't request this, please ignore this email.</p>
+    `,
+    );
+    if (isEmailSent) {
+      res.json({ message: 'OTP sent to email' });
+    } else {
+      res.status(500).json({ message: 'Failed to send email' });
+    }
+  } catch (error) {
+    console.error('Error sending email:', error);
+    res.status(500).json({ message: 'Failed to send email' });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  const { email, otpCode, newPassword } = req.body;
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+  if (user.otpCode !== otpCode || user.otpExpiry < new Date()) {
+    return res.status(400).json({ message: 'Invalid OTP code' });
+  }
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { password: hashedPassword, otpCode: null, otpExpiry: null },
+  });
+  res.json({ message: 'Password reset successfully' });
 };

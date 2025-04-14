@@ -8,6 +8,8 @@ import {
   deleteUser,
   signup,
   signin,
+  forgotPassword,
+  resetPassword,
 } from '../controllers/userController.js';
 
 router.post('/', createUser);
@@ -17,5 +19,6 @@ router.post('/signin', signin);
 router.get('/:id', getUserById);
 router.put('/:id', updateUser);
 router.delete('/:id', deleteUser);
-
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 export default router;
