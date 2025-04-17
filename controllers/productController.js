@@ -1,6 +1,6 @@
 import pool from '../config/db.config.js';
 import { PrismaClient } from '@prisma/client';
-
+import xlsx from 'xlsx';
 const prisma = new PrismaClient();
 
 // Get all users
@@ -50,6 +50,32 @@ async function createProduct(req, res) {
     console.error('Error executing query', err.stack);
     res.status(500).json({ error: 'Internal server error' });
   }
+}
+
+async function uploadProductsExcel(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
+
+  const workbook = xlsx.readFile(req.file.path);
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  const sheet = xlsx.utils.sheet_to_json(worksheet);
+
+  await prisma.products.createMany({
+    data: sheet.map((row) => ({
+      name: row.name,
+      price: row.price,
+      stock: row.stock,
+      description: row.description,
+      slug: row.slug,
+      categoryId: row.categoryId,
+    })),
+  });
+
+  fs.unlinkSync(req.file.path);
+
+  res.json({ message: 'Products uploaded successfully' });
 }
 
 async function updateProduct(req, res) {
@@ -159,4 +185,5 @@ export {
   deleteProduct,
   getCategoryStats,
   buyProduct,
+  uploadProductsExcel,
 };

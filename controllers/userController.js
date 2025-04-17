@@ -38,6 +38,18 @@ export const updateUser = async (req, res) => {
   res.json(user);
 };
 
+export const uploadProfilePicture = async (req, res) => {
+  const { id } = req.params;
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
+  const user = await prisma.user.update({
+    where: { id: parseInt(id) },
+    data: { profilePicture: req.file.path },
+  });
+  res.json(user);
+};
+
 export const deleteUser = async (req, res) => {
   const { id } = req.params;
   await prisma.user.delete({
