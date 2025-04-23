@@ -1,6 +1,7 @@
 import pool from '../config/db.config.js';
 import { PrismaClient } from '@prisma/client';
 import xlsx from 'xlsx';
+import fs from 'fs';
 const prisma = new PrismaClient();
 
 // Get all users
@@ -11,6 +12,11 @@ async function getProducts(req, res) {
         category: {
           select: {
             name: true,
+          },
+        },
+        images: {
+          select: {
+            url: true,
           },
         },
       },
@@ -95,6 +101,36 @@ async function updateProduct(req, res) {
     console.error('Error executing query', err.stack);
     res.status(500).json({ error: 'Internal server error' });
   }
+}
+
+async function updateProductImages(req, res) {
+  const { id } = req.params;
+  const product = await prisma.products.findUnique({
+    where: { id: parseInt(id) },
+  });
+  if (!product) {
+    if (req.files.length > 0) {
+      req.files.forEach((file) => {
+        if (fs.existsSync(`./${file.path}`)) {
+          fs.unlinkSync(`./${file.path}`);
+        }
+      });
+    }
+    return res.status(404).json({ error: 'Product not found' });
+  }
+
+  if (!req.files && req.files.length === 0) {
+    return res.status(400).json({ error: 'No files uploaded' });
+  }
+
+  await prisma.productImage.createMany({
+    data: req.files.map((file) => ({
+      productId: parseInt(id),
+      url: file.path,
+    })),
+  });
+
+  res.json({ message: 'Product images uploaded successfully' });
 }
 
 async function deleteProduct(req, res) {
@@ -186,4 +222,5 @@ export {
   getCategoryStats,
   buyProduct,
   uploadProductsExcel,
+  updateProductImages,
 };

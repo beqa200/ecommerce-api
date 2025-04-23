@@ -14,11 +14,29 @@ const storage = multer.diskStorage({
   },
 });
 
-const filterFiles = (req, file, cb) => {
+///////////////////////
+
+const filterProfilePicture = (req, file, cb) => {
+  const allowedFileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+  if (allowedFileTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type'));
+  }
+};
+
+const uploadProfilePicture = multer({
+  storage: storage,
+  fileFilter: filterProfilePicture,
+  limits: {
+    fileSize: 1024 * 1024 * 5, // 5MB
+  },
+});
+
+///////////////////////
+
+const filterExcels = (req, file, cb) => {
   const allowedFileTypes = [
-    'image/jpeg',
-    'image/png',
-    'image/jpg',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-excel',
   ];
@@ -29,12 +47,31 @@ const filterFiles = (req, file, cb) => {
   }
 };
 
-const upload = multer({
+const uploadExcel = multer({
   storage: storage,
-  fileFilter: filterFiles,
+  fileFilter: filterExcels,
   limits: {
-    fileSize: 1024 * 1024 * 5, // 5MB
+    fileSize: 1024 * 1024 * 10, // 10MB
   },
 });
 
-export default upload;
+///////////////////////
+
+const filterProductImages = (req, file, cb) => {
+  const allowedFileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+  if (allowedFileTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type'));
+  }
+};
+
+const uploadProductImages = multer({
+  storage: storage,
+  fileFilter: filterProductImages,
+  limits: {
+    fileSize: 1024 * 1024 * 10, // 10MB
+  },
+});
+
+export { uploadProfilePicture, uploadExcel, uploadProductImages };
